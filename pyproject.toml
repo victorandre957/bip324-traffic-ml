@@ -4,15 +4,20 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bip324-traffic-ml"
-version = "0.1.0"
-description = "Supervised baselines for passive BIP324 traffic analysis"
+version = "0.2.0"
+description = "Independent PCAP preparation, activity classification and evaluation for BIP324"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+  "numpy>=1.26",
   "pandas>=2.2",
   "scikit-learn>=1.5",
   "xgboost>=2.1",
 ]
+
+[project.optional-dependencies]
+cnn = ["torch>=2.5"]
+dev = ["black>=24"]
 
 [project.scripts]
 bip324-traffic-ml = "bip324_traffic_ml.cli:main"
@@ -25,3 +30,7 @@ testpaths = ["tests"]
 
 [tool.setuptools.package-data]
 bip324_traffic_ml = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]

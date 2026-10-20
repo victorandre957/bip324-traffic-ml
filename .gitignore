@@ -5,6 +5,7 @@ __pycache__/
 build/
 dist/
 data/
+artifacts/
 models/
 .pytest_cache/
 .coverage

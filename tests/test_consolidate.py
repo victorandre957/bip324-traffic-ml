@@ -72,6 +72,8 @@ class ConsolidationTest(unittest.TestCase):
                 "bip324_entropy_is_high": [1],
                 "label_bip324": [1],
                 "baseline_handshake": [1],
+                "traffic_class": ["bitcoin_v2"],
+                "noise_family": ["not_noise"],
             }
         )
 
