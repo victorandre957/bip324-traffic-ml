@@ -115,3 +115,25 @@ class CaptureTest(unittest.TestCase):
         fragmented[20:22] = b"\x20\x00"
         self.assertIsNone(reader._packet(1, 1, bytes(fragmented)))
         self.assertEqual(reader.counts["ip_fragments"], 1)
+
+    def test_small_timestamp_inversions_are_sorted_without_editing_pcap(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            packets = tiny_pcap(root / "ordered.pcap")
+            packets[1], packets[2] = packets[2], packets[1]
+            write_pcap(root / "jitter.pcap", packets)
+            original = (root / "jitter.pcap").read_bytes()
+            summary = extract_pcap(root / "jitter.pcap", root / "out", "jitter")
+            self.assertEqual(summary["packet_counts"]["out_of_order_timestamp_packets"], 1)
+            self.assertEqual((root / "jitter.pcap").read_bytes(), original)
+            observations = pd.read_csv(root / "out/observations.csv")
+            self.assertEqual(observations.bytes_total.sum(), 208)
+
+    def test_large_timestamp_inversions_fail_instead_of_changing_time(self):
+        from collections import Counter
+        from bip324_traffic_ml.capture.extract import timestamp_order
+        from bip324_traffic_ml.capture.pcap import Packet
+
+        packets = [Packet(t, "UDP", ("a", 1), ("b", 2), 1, b"x") for t in (10, 12, 1)]
+        with self.assertRaisesRegex(ValueError, "reorder buffer"):
+            list(timestamp_order(packets, Counter()))

@@ -86,6 +86,34 @@ def build_parser():
         help="Train one multiclass activity model and evaluate on held-out runs.",
     )
     _training_options(train)
+    explain = commands.add_parser(
+        "explain",
+        help="Explain held-out predictions with XGBoost TreeSHAP or grouped input permutation.",
+    )
+    explain.add_argument("datasets", nargs="+", type=Path)
+    explain.add_argument("--model-dir", required=True, type=Path)
+    explain.add_argument("--output-dir", required=True, type=Path)
+    explain.add_argument(
+        "--runs", help="Comma-separated held-out run IDs; defaults to the model's test runs."
+    )
+    explain.add_argument("--max-samples", type=int, default=1024)
+    explain.add_argument(
+        "--error-samples",
+        type=int,
+        default=5,
+        help="Additional diagnostic examples per error type/activity/noise family.",
+    )
+    explain.add_argument("--batch-size", type=int, default=128)
+    explain.add_argument("--threads", type=int, default=4)
+    explain.add_argument("--seed", type=int, default=42)
+    explain.add_argument("--method", choices=("shap", "permutation"), default="shap")
+    explain.add_argument("--repeats", type=int, default=3)
+    explain.add_argument("--device", choices=("auto", "cpu", "cuda"), default="cpu")
+    explain.add_argument(
+        "--no-plots",
+        action="store_true",
+        help="Export numerical reports only, without optional SHAP/Matplotlib dependencies.",
+    )
     predict = commands.add_parser("predict", help="Predict from unlabeled passive observations.")
     predict.add_argument("--observations", required=True, type=Path)
     predict.add_argument("--model-dir", required=True, type=Path)
@@ -96,6 +124,36 @@ def build_parser():
 
 
 def dispatch(args):
+    if args.command == "explain":
+        from .explanation.xgboost import ExplainConfig, explain_xgboost
+
+        runs = (
+            [value.strip() for value in args.runs.split(",") if value.strip()]
+            if args.runs
+            else None
+        )
+        if args.method == "permutation":
+            from .explanation.permutation import PermutationConfig, explain_permutation
+
+            config = PermutationConfig(
+                max_samples=args.max_samples,
+                repeats=args.repeats,
+                batch_size=args.batch_size,
+                threads=args.threads,
+                seed=args.seed,
+                device=args.device,
+                plots=not args.no_plots,
+            )
+            return explain_permutation(args.datasets, args.model_dir, args.output_dir, runs, config)
+        config = ExplainConfig(
+            max_samples=args.max_samples,
+            error_samples=args.error_samples,
+            batch_size=args.batch_size,
+            threads=args.threads,
+            seed=args.seed,
+            plots=not args.no_plots,
+        )
+        return explain_xgboost(args.datasets, args.model_dir, args.output_dir, runs, config)
     if args.command == "extract":
         from .capture.extract import extract_pcap
         from .preparation import validate_run_id

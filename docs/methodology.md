@@ -53,8 +53,8 @@ mark, **not full reassembly**: reordered segments and 32-bit sequence wrap may b
 miscounted. IP fragments are counted and skipped; encrypted/unsupported IPv6
 extension chains are not decoded. Snaplen truncation is reported: wire payload
 size can be inferred from headers, but entropy only uses captured bytes. Capture
-framing truncation and unsupported link types fail explicitly. Timestamps must
-be nondecreasing within each flow.
+framing truncation and unsupported link types fail explicitly. A one-second timestamp buffer stably sorts small capture inversions; larger
+disorder fails explicitly. Source packet timestamps and PCAP files stay intact.
 
 Whole-flow totals and future context make these **offline** models. They cannot
 be advertised as real-time detectors without rebuilding a causal feature set.

@@ -31,6 +31,7 @@ Traffic lab -> PCAP ----------------> extract -> observations.csv -> predict
 | Models | `training/xgboost.py`, `training/temporal.py` | Multiclass XGBoost and temporal CNN |
 | Evaluation | `evaluation.py` | Shared window, flow and noise confusion metrics |
 | Inference | `inference.py` | Predict from observations without logs or lab metadata |
+| Explanations | `explanation/` | XGBoost TreeSHAP, grouped permutation for both models, and error diagnostics |
 | CLI | `cli.py` | Arguments and dispatch only |
 
 ## Environment
@@ -170,6 +171,22 @@ remain untouched. See [migration notes](docs/migration-v0.2.md).
 
 ## Checks and methodology
 
+To explain a saved XGBoost model without retraining:
+
+```bash
+python -m pip install -e './bip324-traffic-ml[explain]'
+python -m bip324_traffic_ml explain bip324-traffic-ml/data \
+  --model-dir bip324-traffic-ml/models/coverage-all-activity \
+  --max-samples 1024 --error-samples 5 --threads 4 \
+  --output-dir bip324-traffic-ml/artifacts/explanations/coverage-all-xgboost-01
+```
+
+The report includes weighted global importance, class-specific rankings, SHAP
+beeswarms and local explanations of noise/activity errors. This explains the
+XGBoost model; `--method permutation` measures grouped input dependence for
+either architecture, including the CNN context. See the
+[SHAP guide](docs/interpretability.md) for sampling, interpretation and output files.
+
 ```bash
 python -m unittest discover -s bip324-traffic-ml/tests -v
 ```
@@ -180,6 +197,8 @@ normalization, output preservation, and training/inference round trips for both
 architectures (CNN tests skip if PyTorch is absent).
 
 - [Methodology and measurement limitations](docs/methodology.md)
+- [SHAP explanations](docs/interpretability.md)
 - [Migration and compatibility](docs/migration-v0.2.md)
+- [Latest model update and feature analysis (2026-10-27)](docs/results-2026-10-27.md)
 - [Historical preliminary results](docs/preliminary-results.md)
 - [Historical CNN results](experiments/temporal_cnn/RESULTS.md)

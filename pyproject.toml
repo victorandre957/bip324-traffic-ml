@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 cnn = ["torch>=2.5"]
+explain = ["shap>=0.46", "matplotlib>=3.8"]
 dev = ["black>=24"]
 
 [project.scripts]

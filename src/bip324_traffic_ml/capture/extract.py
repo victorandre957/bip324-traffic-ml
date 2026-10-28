@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 import hashlib
+import heapq
 import json
 import math
 from pathlib import Path
@@ -22,6 +23,31 @@ from ..features import FEATURE_SCHEMA, build_windows, feature_frame
 from .pcap import Packet, PcapReader
 
 DIRECTIONS = ("a_to_b", "b_to_a")
+
+
+def timestamp_order(packets, stats: Counter, horizon: float = 1.0):
+    """Stably reorder bounded capture jitter without rewriting source timestamps.
+
+    A one-second watermark bounds packet buffering. Larger inversions fail rather
+    than changing timestamps or silently corrupting byte/timing measurements.
+    """
+    pending = []
+    newest = emitted = float("-inf")
+    for position, packet in enumerate(packets):
+        if not math.isfinite(packet.timestamp):
+            raise ValueError("non-finite capture timestamp")
+        if packet.timestamp < newest:
+            stats["out_of_order_timestamp_packets"] += 1
+        newest = max(newest, packet.timestamp)
+        if packet.timestamp < emitted:
+            raise ValueError("capture timestamp disorder exceeds the one-second reorder buffer")
+        heapq.heappush(pending, (packet.timestamp, position, packet))
+        while pending and pending[0][0] <= newest - horizon:
+            emitted, _, ordered = heapq.heappop(pending)
+            yield ordered
+    while pending:
+        _, _, packet = heapq.heappop(pending)
+        yield packet
 
 
 def phase(age: float) -> str:
@@ -151,7 +177,7 @@ def extract_pcap(pcap: Path, output_dir: Path, run_id: str, scale: float = 0.25)
     with new_directory(output_dir) as target:
         flows, current, sessions = [], {}, Counter()
         last_progress = time.monotonic()
-        for packet in reader.packets():
+        for packet in timestamp_order(reader.packets(), reader.counts):
             endpoints = sorted((packet.src, packet.dst))
             key = (packet.protocol, *endpoints)
             flow = current.get(key)
@@ -196,7 +222,8 @@ def extract_pcap(pcap: Path, output_dir: Path, run_id: str, scale: float = 0.25)
             "packet_counts": dict(reader.counts),
             "scope": "all observed TCP/UDP flows",
             "label_sources": [],
-            "extractor_version": 1,
+            "extractor_version": 2,
+            "timestamp_reorder_horizon_seconds": 1.0,
             "tcp_payload_accounting": "v1 high-water sequence accounting (legacy-compatible)",
         }
         write_json(target / "extraction_summary.json", summary)

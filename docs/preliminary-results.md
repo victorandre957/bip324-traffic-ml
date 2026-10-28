@@ -1,4 +1,7 @@
-# Preliminary results
+# Historical preliminary results
+
+The current single-model comparison and feature analysis are in the
+[2026-10-27 update](results-2026-10-27.md). The results below document the earlier pilot.
 
 ## Status
 
